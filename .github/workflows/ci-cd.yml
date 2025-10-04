@@ -1,0 +1,40 @@
+name: CI/CD Flask Self-Hosted
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest   # roda em runner do GitHub (nuvem)
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configura Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instala dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Roda testes
+        run: pytest -q
+
+  deploy:
+    runs-on: self-hosted    # roda dentro da sua VM
+    needs: build-test
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Build da imagem Docker
+        run: |
+          docker rm -f flask-app || true
+          docker build -t flask-ci-cd:latest .
+          docker run -d --name flask-app -p 8000:8000 flask-ci-cd:latest
